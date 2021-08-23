@@ -1,0 +1,47 @@
+#!/bin/bash
+# this version of circle will just wd profit between runs
+
+currency=doge
+
+# find the luabot binary
+luabot=$(type -P luabot)
+[[ -z "$luabot" ]] && luabot=$(type -P luabot.exe)
+[[ -z "$luabot" ]] && [[ -f ./luabot ]] && luabot=./luabot
+[[ -z "$luabot" ]] && [[ -f ./luabot.exe ]] && luabot=./luabot.exe
+
+[[ -z "$luabot" ]] && printf "Couldn't find luabot.\n" && exit
+
+bstart=$(tail -n 1 ./bnow.$currency | cut -d . -f1 | cut -d: -f2)
+
+. account.data
+touch run
+while [ -f run ] ; do
+	# run a bot given on cmdline
+	$luabot "$@"
+	xcode=$?
+
+	# exitcode 9 means server replied with an error, we shoudln't ignore but stop here
+	if [[ $xcode == 9 ]] ; then
+		# if you want something else to be done on error (like audio-notification)
+		# insert it here
+		read -p "Fatal error?"
+	fi
+
+	# kill other instances using the same working dir (this is for taking
+	# back control after running in a stop then lost amount got recovered
+	# by another script or with manually with gamble
+	for n in $(pidof luabot) $(pidof luabot.exe); do
+		if [[ "$(readlink /proc/$n/cwd)" == "$(readlink /proc/self/cwd)" ]] ; then
+			kill $n
+		fi
+	done
+	
+	# check for auto-withdraw condition
+	# if we have reached goal autowd 1/30 of balance and increase goal
+	b=$(tail -n 1 ./bnow.$currency | cut -d . -f1 | cut -d: -f2)
+        if ((b>=bstart+2)) ; then
+		./stash $((b-bstart))
+		b=$bstart
+        fi
+        sleep 0.1 # give ctrl-c a chance
+done

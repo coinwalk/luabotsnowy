@@ -1,0 +1,61 @@
+#!/bin/bash
+
+#
+#  This script is just an example on how I use luabot
+#  It switches between a bunch of scripts in a subdirectory.
+#  When the bot run into interactive stop point it and 
+#  we recover using another script or manual bettings using gamble
+#  it will kill the other instance as soon as loss is recovered
+#
+#  ...last not least it handles auto-wd
+#
+
+currency=doge
+# find the luabot binary
+luabot=$(type -P luabot)
+[[ -z "$luabot" ]] && luabot=$(type -P luabot.exe)
+[[ -z "$luabot" ]] && [[ -f ./luabot ]] && luabot=./luabot
+[[ -z "$luabot" ]] && [[ -f ./luabot.exe ]] && luabot=./luabot,exe
+
+[[ -z "$luabot" ]] && printf "Couldn't find luabot.\n" && exit
+
+
+b=$(tail -n 1 ./bnow.$currency | cut -d . -f1 | cut -d: -f2)
+# first autowd after 1% gain
+((goal=b*101/100))
+. account.data
+touch run
+while [ -f run ] ; do
+	# run a randomly selected lua script from subdir c5x
+	$luabot "$@" -t $((RANDOM%10000)) $(ls c5x/*lua | sort -R | tail -n1)
+	xcode=$?
+
+	# exitcode 9 means server replied with an error, we shoudln't ignore but stop here
+	if [[ $xcode == 9 ]] ; then
+		# if you want something else to be done on error (like audio-notification)
+		# insert it here
+		read -p "Fatal error?"
+	fi
+
+	# kill other instances using the same working dir (this is for taking
+	# back control after running in a stop then lost amount got recovered
+	# by another script or with manually with gamble
+	for n in $(pidof luabot) $(pidof luabot.exe); do
+		if [[ "$(readlink /proc/$n/cwd)" == "$(readlink /proc/self/cwd)" ]] ; then
+			kill $n
+		fi
+	done
+	
+	# check for auto-withdraw condition
+	# if we have reached goal autowd 1/30 of balance and set next
+	# goal to new balance + 1.5*stashed amount so even
+	# with autowd our balance slowly increases
+	b=$(tail -n 1 ./bnow.$currency | cut -d . -f1 | cut -d: -f2)
+        if ((b>=goal)) ; then
+        	((stashamount=b/30))
+        	((stashamount<5)) && stashamount=5
+		stash $stashamount
+		((goal=b-$stashamount+3*stashamount/2))
+        fi
+        sleep 0.1 # give ctrl-c a chance
+done

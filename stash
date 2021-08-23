@@ -1,0 +1,83 @@
+#!/bin/bash
+address=unconfigured
+
+[ "$2" ] && address=$2
+. account.data
+currency=doge
+if [[ "$TOTP" == yes ]] ; then
+	echo "you can't auto-withdraw with 2FA enabled."
+	sleep 15
+	exit
+fi
+amount=$(tr -cd "[0-9]." <<< "$1")
+if ((amount<2)) || [[ "$1" != "$amount" ]] ; then
+	tput setaf 1 ; tput bold ; echo "FAILED: amount wrong" ; tput sgr0
+	exit 1
+fi
+
+# convert to satoshi
+amount=$(echo "${1}*100000000/1" | bc)
+
+if [[ "$address" == "unconfigured" ]] ; then
+	tput bold
+	echo "You didnt give an address but also didn't configure"
+	echo "a default address to send to. Please edit the header of this script"
+	echo "address can be an account number or an external wallet"
+	tput sgr0
+	exit 1
+fi
+
+# if the address is the name of another directory 
+# on the same level as current working directory
+# and that directory has account.data, resolve the
+# address to its AccountId 
+# (so "stash 100 bird2" works here)
+[ -f ../${address}/account.data ] && address=$(grep AccountId ~/999/bots/${address}/account.data | cut -d= -f2)
+
+# we cant send outself
+[[ $AccountId == $address ]] && exit 1
+
+if ((address>1000)) || [[ ${#address} == 34 ]] ; then
+	echo "→ $address"
+	serverreply=$(curl -sd "a=Withdraw&s=${SessionCookie}&Amount=${amount}&Address=${address}&Currency=$currency" \
+		https://www.999doge.com/api/web.aspx)
+	err=$?
+	if ((err>0)) ; then
+		sleep 5
+		serverreply=$(curl -sd "a=Withdraw&s=${SessionCookie}&Amount=${amount}&Address=${address}&Currency=$currency" \
+		https://www.999doge.com/api/web.aspx)
+		err=$?
+	fi
+	echo "Server replies: $serverreply"
+	if [[ "$serverreply" != *Pending* ]] ; then
+		tput setaf 1 ; tput bold ; echo FAILED 
+	else
+		tput setaf 2 ; tput bold ; echo OK
+	fi
+	bnow=$(tail -n 1 bnow.$currency | cut -d : -f2 | cut -d. -f1)
+	prefix=$(tail -n 1 bnow.$currency | cut -d : -f1)
+	echo $prefix:$((bnow-${1%%.*})).0000 >>bnow.$currency
+
+	# this is from my personal setup, my bot directories are all
+	# named something with bird, and when called as "stash 100 bird2"
+	# I want to update the bots balance 15 seconds later so the 
+	# bot could continue to run if that's enough for its recovery
+	# (assuming 15 seconds later the xfer is done)
+
+	if [[ $2 == bird* ]] ; then
+		cd ../$2 
+		bnow=$(tail -n 1 bnow.$currency | cut -d: -f2 | cut -d. -f1)
+		prefix=$(tail -n 1 bnow.$currency | cut -d : -f1)
+		( sleep 15 ; echo $prefix:$((bnow+$1)).0000 >>bnow ) &
+		cd -
+		echo there: $((bnow+${1%.*}))
+	fi
+	
+	# if we specify 0 as amount it's withdraw ALL so set bnow to 0 
+	[[ $1 == 0 ]] && echo 0.0 >>bnow.$currency
+	echo new balance: $(tail -n 1 bnow.$currency | cut -d. -f1)
+else
+	tput setaf 1 ; tput bold
+		echo "address wrong?"
+	tput sgr0
+fi
