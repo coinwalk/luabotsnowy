@@ -35,14 +35,14 @@ function dobet()
 if (elf>=(x*3)) then
      nextbet = previousbet*2
      x       = nextbet
-     elf     = x 
-     vim     = false
+     elf     = x
  end 
- if (bob>=(x*6)) then
-     nextbet = previousbet*2
+ if (bob>=(x*3)) then
      x       = nextbet
-     bob     = x 
-     vim     = true
+     bob     = x
+     if elf<=x then
+     elf = x 
+     end
  end
  if  balance>old and (nextbet>=(y*4)) then
      y=balance/6400
