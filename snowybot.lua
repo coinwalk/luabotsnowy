@@ -1,5 +1,5 @@
 cat     = 6400
-y       = balance/640
+y       = balance/6400
 x       = y 
 v       = y
 chance  = 49.95
@@ -45,7 +45,7 @@ if (elf>=(x*3)) then
      vim     = true
  end
  if  balance>old and (nextbet>=(y*4)) then
-     y=balance/640
+     y=balance/6400
      nextbet = y
      vim     = false
      doh     = true
