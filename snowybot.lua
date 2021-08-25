@@ -1,64 +1,54 @@
-cat     = 6400
-y       = balance/6400
-x       = y 
-v       = y
-chance  = 49.95
-bethigh = false
+y       = balance/64
 nextbet = y
-target  = 330
+older   = balance
 old     = balance
-elf     = y
-myseed  = 0
+bolder  = balance
+lol     = 1000000
+x       = lol
+target  = 1
+chance  = 49.95
 Low     = 0
-lol     = balance
 High    = 499499
-bob     = y
-myseed  = 0
-kill    = 0
-doh     = true
+bethigh = false
+bill    = lol
+bi      = lol
 vim     = false
+bal     = balance
 
-function dobet()    
-    if win then
-   elf = elf+previousbet
-   bob = bob-previousbet
-   else
-   elf = elf-previousbet 
-   bob = bob+previousbet  
- end  
-  if bob<y then
-    bob=y
-    end
-  if elf<y then
-   elf=y
-    end
-if (elf>=(x*3)) then
-     nextbet = previousbet*2
-     x       = nextbet
-     elf     = x
+function dobet()
+if win then
+    bal  = bal+previousbet
+    bill = bill-1
+else
+    bal  = bal-previousbet
+    bill = bill+1
+end  
+ if (bill<=x-7) then
+     nextbet = previousbet*2 
+     x       = bill
+     bill    = x
+end 
+ if (bill>=x+4) then
+     nextbet = previousbet*2 
+     x       = bill
+     bill    = x  
  end 
- if (bob>=(x*3)) then
-     x       = nextbet
-     bob     = x
-     if elf<=x then
-     elf = x 
-     end
+ if (balance<=((older/64)*24)) then
+     nextbet = balance/64
+     x       = lol
+     bill    = lol
+     older   = balance
+     vim     = true
  end
- if  balance>old and (nextbet>=(y*4)) then
-     y=balance/6400
-     nextbet = y
-     vim     = false
-     doh     = true
-     x       = y
-     elf     = y
-     bob     = y
-     old     = balance
- end
- if nextbet<0.00000001 then
-	 nextbet=0.00000001
- end
-if balance>target then
+ if ((balance>=old) and (previousbet>=(y*2))) or ((balance>=bolder) and (vim==true)) then
+    nextbet = balance/64
+    bill    = lol
+    x       = lol
+    old     = balance
+    older   = balance
+    vim     = false
+end
+if bal>target or bal<nextbet then
         stop()
     end
 end
-
